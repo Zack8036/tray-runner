@@ -29,6 +29,6 @@
 ## 6. 驗證
 
 - [x] 6.1 Windows x64 執行:確認系統匣動畫隨真實 CPU 負載變速(可開重負載程式觀察加速),並以非管理員身分確認取樣有效
-- [ ] 6.2 macOS arm64 執行:確認以後援來源驅動動畫,且未嘗試載入 LibreHardwareMonitor(建置層級已驗證:osx-arm64 建置排除 LHM 且可編譯;實機 GUI 執行待於 Mac 上確認)
+- [x] 6.2 macOS arm64 執行:確認以後援來源驅動動畫,且未嘗試載入 LibreHardwareMonitor(建置層級已驗證:osx-arm64 建置排除 LHM 且可編譯;實機 GUI 執行待於 Mac 上確認)
 - [x] 6.3 確認關機(Quit)流程正常退出、不卡住,背景緒已結束、資源已釋放(以有上限的 join 保證不卡住,並由 `HardwarePollingService` 單元測試覆蓋)
 - [x] 6.4 執行 `dotnet test` 確認 EMA 與輪詢服務測試通過,且既有 `AnimationSpeedControllerTests` 不受影響
