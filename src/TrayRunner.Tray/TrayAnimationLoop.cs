@@ -29,6 +29,16 @@ public sealed class TrayAnimationLoop
         _timer.Stop();
     }
 
+    /// <summary>
+    /// 於執行期更新影格間隔。Avalonia 的 <see cref="DispatcherTimer.Interval"/> setter
+    /// 在計時器運行中會立即重排,因此直接指派即可;<c>_frameIndex</c> 不受影響,
+    /// 動畫不會重置回第一格。
+    /// </summary>
+    public void SetInterval(TimeSpan interval)
+    {
+        _timer.Interval = interval;
+    }
+
     private void OnTick(object? sender, EventArgs e)
     {
         _frameIndex = (_frameIndex + 1) % _pool.Count;

@@ -24,13 +24,17 @@
 - **WHEN** 動畫迴圈執行任意長時間
 - **THEN** `TrayIcon.Icon` 只會被指派為資源池中既有的 `WindowIcon` 物件，不會產生新的 `WindowIcon` 實例
 
-### Requirement: 固定速率動畫迴圈
+### Requirement: 可變速率動畫迴圈
 
-應用程式 SHALL 透過 `DispatcherTimer` 在 UI thread 上以固定 100 毫秒的間隔切換 `TrayIcon.Icon`，依資源池順序循環播放，使狀態列圖示呈現連續動畫。
+應用程式 SHALL 透過 `DispatcherTimer` 在 UI thread 上以目前設定的間隔切換 `TrayIcon.Icon`，依資源池順序循環播放，使狀態列圖示呈現連續動畫。間隔的初始值為 100 毫秒，且 SHALL 可於執行期更新（由速度控制器決定，參見 `animation-speed-control` 能力）；更新間隔時 MUST 保留目前的 frame 索引，不重置回第一張。
 
 #### Scenario: 依序循環播放 frame
 - **WHEN** 動畫迴圈持續執行
-- **THEN** `TrayIcon.Icon` 會按照資源池中的順序循環指派，每 100 毫秒切換到下一張，到達最後一張後回到第一張
+- **THEN** `TrayIcon.Icon` 會按照資源池中的順序循環指派，每經過目前間隔切換到下一張，到達最後一張後回到第一張
+
+#### Scenario: 執行期更新間隔不重置動畫
+- **WHEN** 動畫迴圈執行中且間隔被更新為新值
+- **THEN** 後續切換改以新間隔進行，且目前的 frame 索引被保留，動畫不會跳回第一張
 
 #### Scenario: 切換動作於 UI thread 執行
 - **WHEN** Timer tick 觸發

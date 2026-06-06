@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TrayRunner.Tray/TrayRunner.Tray.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TrayRunner.Tray.Tests/TrayRunner.Tray.Tests.csproj" />
+  </Folder>
+</Solution>

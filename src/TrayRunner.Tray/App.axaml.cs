@@ -9,6 +9,7 @@ public partial class App : Application
 {
     private IconPool? _iconPool;
     private TrayAnimationLoop? _animLoop;
+    private CpuLoadSimulator? _cpuSimulator;
 
     public override void Initialize()
     {
@@ -35,6 +36,10 @@ public partial class App : Application
                 tray.Icon = _iconPool[0];
                 _animLoop = new TrayAnimationLoop(tray, _iconPool);
                 _animLoop.Start();
+
+                // 模擬器:每 3 秒餵入隨機 CPU 負載,動態改變動畫速度以供視覺驗證。
+                _cpuSimulator = new CpuLoadSimulator(_animLoop, Console.WriteLine);
+                _cpuSimulator.Start();
             }
 
             desktop.Exit += OnDesktopExit;
@@ -51,6 +56,7 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        _cpuSimulator?.Stop();
         _animLoop?.Stop();
         _iconPool?.Dispose();
     }
