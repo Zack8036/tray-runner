@@ -52,9 +52,10 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 依執行平台建立取樣來源。Windows 用 LibreHardwareMonitor 讀取真實 CPU,
-    /// 其他平台(本次 macOS)退回隨機模擬器。此工廠在輪詢服務的背景緒上被呼叫,
-    /// 使來源的建立、取樣與釋放全程位於同一條緒。
+    /// 依執行平台建立取樣來源。Windows 用 LibreHardwareMonitor、macOS 用 mach
+    /// <c>host_statistics</c> 差分讀取真實 CPU;任一平台真實來源建立失敗則退回隨機模擬器,
+    /// 其他平台亦以模擬器後援。此工廠在輪詢服務的背景緒上被呼叫,使來源的建立、取樣與
+    /// 釋放全程位於同一條緒。
     /// </summary>
     private static ICpuUsageSource CreateCpuSource()
     {
@@ -73,6 +74,19 @@ public partial class App : Application
             }
         }
 #endif
+        if (OperatingSystem.IsMacOS())
+        {
+            try
+            {
+                return new MacCpuSource();
+            }
+            catch (Exception ex)
+            {
+                // mach 取樣建立失敗:退回模擬器,與 Windows 端 LHM 退回邏輯對稱。
+                Console.WriteLine($"macOS CPU 取樣建立失敗,改用模擬器:{ex.Message}");
+            }
+        }
+
         return new CpuSimulator();
     }
 
