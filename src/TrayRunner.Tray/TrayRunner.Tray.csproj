@@ -9,6 +9,20 @@
     <RuntimeIdentifiers>win-x64;osx-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
+  <!--
+    LibreHardwareMonitor 為 Windows 專屬(底層依賴 WinRing0 核心驅動)。
+    僅在非 osx-arm64 的建置(即 Windows 發佈,以及無 RID 的本機開發 / 測試)引入套件,
+    並同步定義 LHM_AVAILABLE 編譯常數,使 LhmCpuSource 只在套件存在時參與編譯。
+    如此 macOS (osx-arm64) 發佈完全不牽連此相依。
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != 'osx-arm64'">
+    <DefineConstants>$(DefineConstants);LHM_AVAILABLE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != 'osx-arm64'">
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+  </ItemGroup>
+
   <ItemGroup>
     <AvaloniaResource Include="Assets\*.png" />
   </ItemGroup>

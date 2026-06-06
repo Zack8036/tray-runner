@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 
 namespace TrayRunner.Tray;
 
@@ -9,7 +10,7 @@ public partial class App : Application
 {
     private IconPool? _iconPool;
     private TrayAnimationLoop? _animLoop;
-    private CpuLoadSimulator? _cpuSimulator;
+    private HardwarePollingService? _polling;
 
     public override void Initialize()
     {
@@ -37,15 +38,52 @@ public partial class App : Application
                 _animLoop = new TrayAnimationLoop(tray, _iconPool);
                 _animLoop.Start();
 
-                // 模擬器:每 3 秒餵入隨機 CPU 負載,動態改變動畫速度以供視覺驗證。
-                _cpuSimulator = new CpuLoadSimulator(_animLoop, Console.WriteLine);
-                _cpuSimulator.Start();
+                // 背景輪詢:每 1 秒取樣真實 CPU 使用率(Windows 用 LibreHardwareMonitor,
+                // 其他平台用後援模擬器),經 EMA 平滑後封送至 UI 緒調整動畫速度。
+                _polling = new HardwarePollingService(CreateCpuSource, log: Console.WriteLine);
+                _polling.CpuSampled += OnCpuSampled;
+                _polling.Start();
             }
 
             desktop.Exit += OnDesktopExit;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// 依執行平台建立取樣來源。Windows 用 LibreHardwareMonitor 讀取真實 CPU,
+    /// 其他平台(本次 macOS)退回隨機模擬器。此工廠在輪詢服務的背景緒上被呼叫,
+    /// 使來源的建立、取樣與釋放全程位於同一條緒。
+    /// </summary>
+    private static ICpuUsageSource CreateCpuSource()
+    {
+#if LHM_AVAILABLE
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                return new LhmCpuSource();
+            }
+            catch (Exception ex)
+            {
+                // LibreHardwareMonitor 初始化失敗(如防毒擋掉驅動):
+                // 退回模擬器,讓動畫仍能變速,而非整個取樣失效。
+                Console.WriteLine($"LibreHardwareMonitor 初始化失敗,改用模擬器:{ex.Message}");
+            }
+        }
+#endif
+        return new CpuSimulator();
+    }
+
+    /// <summary>
+    /// 背景緒上的取樣事件處理:封送至 UI 緒,於 UI 緒換算間隔並更新動畫迴圈。
+    /// 封送的工作刻意維持輕量(一次換算 + 一次設定間隔),不影響動畫流暢度。
+    /// </summary>
+    private void OnCpuSampled(double cpuPercent)
+    {
+        Dispatcher.UIThread.Post(() =>
+            _animLoop?.SetInterval(AnimationSpeedController.CalculateInterval(cpuPercent)));
     }
 
     private void OnQuitClicked(object? sender, EventArgs e)
@@ -56,7 +94,7 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
-        _cpuSimulator?.Stop();
+        _polling?.Dispose();
         _animLoop?.Stop();
         _iconPool?.Dispose();
     }
