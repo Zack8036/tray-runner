@@ -3,12 +3,12 @@ using Xunit;
 
 namespace TrayRunner.Tray.Tests;
 
-public class CpuUsageSmootherTests
+public class UsageSmootherTests
 {
     [Fact]
     public void FirstSample_IsUsedAsSeed_NotMixed()
     {
-        var smoother = new CpuUsageSmoother(alpha: 0.3d);
+        var smoother = new UsageSmoother(alpha: 0.3d);
 
         // 第一筆直接成為輸出,不與任何先前值(預設 0)混合。
         Assert.Equal(80d, smoother.Add(80d), precision: 9);
@@ -17,7 +17,7 @@ public class CpuUsageSmootherTests
     [Fact]
     public void SubsequentSample_FollowsEmaFormula()
     {
-        var smoother = new CpuUsageSmoother(alpha: 0.3d);
+        var smoother = new UsageSmoother(alpha: 0.3d);
         smoother.Add(0d); // 種子 = 0
 
         // 0.3 · 100 + 0.7 · 0 = 30
@@ -29,7 +29,7 @@ public class CpuUsageSmootherTests
     [Fact]
     public void ConstantInput_ConvergesTowardThatValue()
     {
-        var smoother = new CpuUsageSmoother(alpha: 0.3d);
+        var smoother = new UsageSmoother(alpha: 0.3d);
         smoother.Add(0d); // 種子 = 0
 
         double last = 0d;
@@ -43,7 +43,7 @@ public class CpuUsageSmootherTests
     [Fact]
     public void Spike_IsDampened_NotPassedThrough()
     {
-        var smoother = new CpuUsageSmoother(alpha: 0.3d);
+        var smoother = new UsageSmoother(alpha: 0.3d);
         smoother.Add(10d); // 種子穩定在低檔
 
         var afterSpike = smoother.Add(90d);
@@ -60,6 +60,6 @@ public class CpuUsageSmootherTests
     [InlineData(-0.1d)]
     public void InvalidAlpha_Throws(double alpha)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new CpuUsageSmoother(alpha));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new UsageSmoother(alpha));
     }
 }

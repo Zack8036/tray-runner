@@ -10,15 +10,15 @@ public class HardwarePollingServiceTests
     /// 假取樣來源:依序回傳給定的值,耗盡後回傳 NaN(會被服務略過),
     /// 使輸出序列可預期。記錄是否被 Dispose。
     /// </summary>
-    private sealed class FakeCpuSource : ICpuUsageSource
+    private sealed class FakeUsageSource : IUsageSource
     {
         private readonly ConcurrentQueue<double> _values;
         public bool Disposed { get; private set; }
 
-        public FakeCpuSource(params double[] values)
+        public FakeUsageSource(params double[] values)
             => _values = new ConcurrentQueue<double>(values);
 
-        public double ReadCpuUsage()
+        public double ReadUsage()
             => _values.TryDequeue(out var v) ? v : double.NaN;
 
         public void Dispose() => Disposed = true;
@@ -28,7 +28,7 @@ public class HardwarePollingServiceTests
         HardwarePollingService service, int expectedCount, int timeoutMs = 2000)
     {
         var collected = new BlockingCollection<double>();
-        service.CpuSampled += v => collected.Add(v);
+        service.Sampled += v => collected.Add(v);
         service.Start();
 
         var result = new List<double>();
@@ -49,7 +49,7 @@ public class HardwarePollingServiceTests
     [Fact]
     public void PublishesSmoothedValues_NotRawSamples()
     {
-        var source = new FakeCpuSource(0d, 100d, 100d);
+        var source = new FakeUsageSource(0d, 100d, 100d);
         using var service = new HardwarePollingService(
             () => source,
             interval: TimeSpan.FromMilliseconds(10),
@@ -66,7 +66,7 @@ public class HardwarePollingServiceTests
     [Fact]
     public void SamplesPeriodically_RaisingMultipleEvents()
     {
-        var source = new FakeCpuSource(50d, 50d, 50d, 50d, 50d);
+        var source = new FakeUsageSource(50d, 50d, 50d, 50d, 50d);
         using var service = new HardwarePollingService(
             () => source,
             interval: TimeSpan.FromMilliseconds(10),
@@ -80,7 +80,7 @@ public class HardwarePollingServiceTests
     [Fact]
     public void SkipsNaNSamples_WithoutRaisingEvent()
     {
-        var source = new FakeCpuSource(double.NaN, 50d);
+        var source = new FakeUsageSource(double.NaN, 50d);
         using var service = new HardwarePollingService(
             () => source,
             interval: TimeSpan.FromMilliseconds(10),
@@ -102,7 +102,7 @@ public class HardwarePollingServiceTests
             alpha: 0.3d);
 
         var raised = 0;
-        service.CpuSampled += _ => Interlocked.Increment(ref raised);
+        service.Sampled += _ => Interlocked.Increment(ref raised);
 
         // 工廠拋例外不應讓背景緒未處理例外而崩潰。
         service.Start();
@@ -114,14 +114,44 @@ public class HardwarePollingServiceTests
     }
 
     [Fact]
+    public void TwoIndependentInstances_PublishTheirOwnSourcesSeparately()
+    {
+        // App 對 CPU 與記憶體各跑一個獨立實例;此處驗證兩者來源彼此獨立、各自發布,
+        // 不會互相串擾(一個來源耗盡回傳 NaN 被略過,不影響另一個)。
+        var cpuSource = new FakeUsageSource(10d, 10d, 10d);
+        var memSource = new FakeUsageSource(80d, 80d, 80d);
+
+        using var cpu = new HardwarePollingService(
+            () => cpuSource, interval: TimeSpan.FromMilliseconds(10), alpha: 0.3d, threadName: "CpuPolling");
+        using var mem = new HardwarePollingService(
+            () => memSource, interval: TimeSpan.FromMilliseconds(10), alpha: 0.3d, threadName: "MemoryPolling");
+
+        var cpuSamples = new BlockingCollection<double>();
+        var memSamples = new BlockingCollection<double>();
+        cpu.Sampled += v => cpuSamples.Add(v);
+        mem.Sampled += v => memSamples.Add(v);
+
+        cpu.Start();
+        mem.Start();
+
+        // 每個服務的第一筆為種子,直接等於其來源值。
+        using var cts = new CancellationTokenSource(2000);
+        var firstCpu = cpuSamples.Take(cts.Token);
+        var firstMem = memSamples.Take(cts.Token);
+
+        Assert.Equal(10d, firstCpu, precision: 9);
+        Assert.Equal(80d, firstMem, precision: 9);
+    }
+
+    [Fact]
     public void Stop_HaltsSampling_AndDisposesSource()
     {
-        var source = new FakeCpuSource(Enumerable.Repeat(50d, 1000).ToArray());
+        var source = new FakeUsageSource(Enumerable.Repeat(50d, 1000).ToArray());
         var service = new HardwarePollingService(
             () => source, interval: TimeSpan.FromMilliseconds(10), alpha: 0.3d);
 
         var seen = 0;
-        service.CpuSampled += _ => Interlocked.Increment(ref seen);
+        service.Sampled += _ => Interlocked.Increment(ref seen);
         service.Start();
 
         // 等到確實開始取樣。

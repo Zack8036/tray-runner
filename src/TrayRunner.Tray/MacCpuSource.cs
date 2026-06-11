@@ -4,7 +4,7 @@ using System.Runtime.Versioning;
 namespace TrayRunner.Tray;
 
 /// <summary>
-/// <see cref="ICpuUsageSource"/> 的 macOS 實作:透過 P/Invoke 呼叫 mach
+/// <see cref="IUsageSource"/> 的 macOS CPU 實作:透過 P/Invoke 呼叫 mach
 /// <c>host_statistics(HOST_CPU_LOAD_INFO)</c> 讀取整機(已跨核心加總)的累計 CPU tick,
 /// 再以前後兩次快照的差分(委派純函式 <see cref="CpuTickDelta"/>)換算整機 CPU 總使用率。
 ///
@@ -15,7 +15,7 @@ namespace TrayRunner.Tray;
 /// <see cref="SupportedOSPlatformAttribute"/> 供平台分析器檢查。
 /// </summary>
 [SupportedOSPlatform("macos")]
-public sealed class MacCpuSource : ICpuUsageSource
+public sealed class MacCpuSource : IUsageSource
 {
     private const string LibSystem = "libSystem.dylib";
 
@@ -34,7 +34,7 @@ public sealed class MacCpuSource : ICpuUsageSource
         _host = mach_host_self();
     }
 
-    public double ReadCpuUsage()
+    public double ReadUsage()
     {
         var info = default(HostCpuLoadInfo);
         var count = HostCpuLoadInfoCount;

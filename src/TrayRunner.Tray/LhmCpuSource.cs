@@ -4,7 +4,7 @@ using LibreHardwareMonitor.Hardware;
 namespace TrayRunner.Tray;
 
 /// <summary>
-/// <see cref="ICpuUsageSource"/> 的 Windows 實作:透過 LibreHardwareMonitor 讀取
+/// <see cref="IUsageSource"/> 的 Windows CPU 實作:透過 LibreHardwareMonitor 讀取
 /// 整機 CPU 總使用率("CPU Total" 的 Load 感測值)。
 ///
 /// LibreHardwareMonitor 為 Windows 專屬,故本檔以 <c>LHM_AVAILABLE</c> 編譯常數包覆,
@@ -12,7 +12,7 @@ namespace TrayRunner.Tray;
 /// 執行緒親和性考量,<see cref="Computer.Open"/>/<see cref="Update"/>/<see cref="Dispose"/>
 /// 預期由 <see cref="HardwarePollingService"/> 的同一條背景執行緒循序呼叫。
 /// </summary>
-public sealed class LhmCpuSource : ICpuUsageSource
+public sealed class LhmCpuSource : IUsageSource
 {
     private readonly Computer _computer;
     private readonly UpdateVisitor _visitor = new();
@@ -25,7 +25,7 @@ public sealed class LhmCpuSource : ICpuUsageSource
         _opened = true;
     }
 
-    public double ReadCpuUsage()
+    public double ReadUsage()
     {
         if (!_opened)
             return double.NaN;
