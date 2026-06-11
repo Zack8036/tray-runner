@@ -78,6 +78,21 @@ public partial class StatusPanelWindow : Window
     {
         base.OnOpened(e);
         Dispatcher.UIThread.Post(PositionNearStatusArea, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(RoundCornersOnMac, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// macOS 限定:把視窗自身的 NSView 圖層裁成與 <c>RootBorder</c> 相同的圓角,讓 OS 模糊層
+    /// (NSVisualEffectView)不再於失焦時從四角露出矩形底版。圖層需待視窗顯示後才存在,
+    /// 故與定位一樣以 Dispatcher 延後;Border 半徑 12 對齊裁切半徑。
+    /// </summary>
+    private void RoundCornersOnMac()
+    {
+        if (!OperatingSystem.IsMacOS())
+            return;
+
+        if (TryGetPlatformHandle()?.Handle is { } handle)
+            MacWindowCorner.Round(handle, 12);
     }
 
     private void PositionNearStatusArea()
